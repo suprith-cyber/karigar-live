@@ -348,7 +348,8 @@ class Handler(BaseHTTPRequestHandler):
             elif path.startswith("/api/products/"):
                 product_id = self.path_id(path, "/api/products/")
                 row = db.execute("""SELECT p.*, u.name AS seller_name, u.location AS seller_location, u.upi_id AS seller_upi_id, CASE WHEN u.show_contact THEN u.phone ELSE '' END AS seller_phone, CASE WHEN u.show_contact THEN u.public_address ELSE '' END AS seller_public_address
-                    FROM products p JOIN users u ON u.id=p.seller_id WHERE p.id=? AND p.is_active=1 AND p.stock>0""", (product_id,)).fetchone()
+                    FROM products p JOIN users u ON u.id=p.seller_id WHERE p.id=? AND p.is_active=TRUE
+                AND p.stock>0""", (product_id,)).fetchone()
                 if row:
                     self.send_json(200, {"product": dict(row)})
                 else:
