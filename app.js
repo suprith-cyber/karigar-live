@@ -119,7 +119,28 @@ function makeSmallPhoto(file,done){let reader=new FileReader();reader.onload=e=>
 async function saveProduct(){if(user?.role!=='artisan'){beginSelling();return}let name=$('pname').value.trim(),price=Number($('price').value),stock=Number($('stock').value);try{let d=await api('/api/products',{method:'POST',body:JSON.stringify({name,category:$('category').value,price,stock,description:$('description').value,image:photoData})});products.unshift(d.product);renderAuth();renderHome();$('pname').value='';$('price').value='';$('stock').value=1;$('description').value='';$('photo').value='';photoData='';$('upload').querySelector('img')?.remove();$('upload-copy').style.display='';say('Your listing is published and visible in the marketplace.');go('market')}catch(e){say(e.message)}}
 async function buyProduct(){if(!activeProduct)return;if(user?.role==='artisan'){say('Please sign in with a buyer account to place an order.');return}if(!user){location.href='/auth.html?mode=signup&role=buyer';return}if(!activeProduct.seller_upi_id){say('This artisan has not added a UPI ID yet. Choose cash on delivery instead.');return}const quantity=Number($('buy-qty').value)||1;try{upiCheckout=await api('/api/upi-orders',{method:'POST',body:JSON.stringify({product_id:activeProduct.id,quantity})});$('upi-order-summary').textContent=`${upiCheckout.product_name} · Qty ${upiCheckout.quantity}`;$('upi-order-total').textContent='₹'+Number(upiCheckout.amount).toLocaleString('en-IN');$('upi-payee-name').textContent=upiCheckout.payee_name;$('upi-payee-vpa').textContent=upiCheckout.payee_vpa;$('upi-modal').classList.add('open')}catch(e){say(e.message)}}
 async function buyWithCashOnDelivery(){if(!activeProduct)return;if(user?.role==='artisan'){say('Please sign in with a buyer account to place an order.');return}if(!user){location.href='/auth.html?mode=signup&role=buyer';return}const quantity=Number($('buy-qty').value)||1;try{const order=await api('/api/cod-orders',{method:'POST',body:JSON.stringify({product_id:activeProduct.id,quantity})});say(`Order #${order.order_id} is confirmed. Pay ₹${Number(order.amount).toLocaleString('en-IN')} in cash when delivered.`);await refresh();go('orders')}catch(e){say(e.message)}}
-function launchUpiApp(){if(!upiCheckout)return;const params=new URLSearchParams({pa:upiCheckout.payee_vpa,pn:upiCheckout.payee_name,am:Number(upiCheckout.amount).toFixed(2),cu:'INR',tn:`Karigar order ${upiCheckout.order_id}`,tr:`KARIGAR${upiCheckout.order_id}`});if(!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){say('UPI apps open from a phone. Scan or enter the artisan UPI ID on your phone; use Pay on delivery on this laptop.');return}window.location.href=`upi://pay?${params.toString()}`}
+function launchUpiApp() {
+  if (!upiCheckout) return;
+
+  const amount = Number(upiCheckout.amount).toFixed(2);
+
+  const params = new URLSearchParams({
+    pa: upiCheckout.payee_vpa,
+    pn: upiCheckout.payee_name,
+    am: amount,
+    cu: 'INR',
+    tn: `Karigar order ${upiCheckout.order_id}`
+  });
+
+  if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    say('UPI apps open from a phone. Scan or enter the artisan UPI ID on your phone; use Pay on delivery on this laptop.');
+    return;
+  }
+
+  const upiUrl = `upi://pay?${params.toString()}`;
+
+  window.location.href = upiUrl;
+}
 async function copyUpiId(){if(!upiCheckout)return;try{await navigator.clipboard.writeText(upiCheckout.payee_vpa);say('Artisan UPI ID copied. Pay ₹'+Number(upiCheckout.amount).toLocaleString('en-IN')+' in your UPI app.')}catch(e){say('Artisan UPI ID: '+upiCheckout.payee_vpa)}}
 async function confirmCashReceived(id){try{await api('/api/orders/cod-confirm',{method:'POST',body:JSON.stringify({order_id:id})});say('Cash receipt confirmed.');await loadDashboard();if($('view-orders').classList.contains('on'))await loadOrders()}catch(e){say(e.message)}}
 async function finishUpiCheckout(){if(!upiCheckout)return;const orderId=upiCheckout.order_id;upiCheckout=null;$('upi-modal').classList.remove('open');await refresh();go('orders');say(`UPI order #${orderId} is awaiting the artisan’s payment confirmation.`)}
