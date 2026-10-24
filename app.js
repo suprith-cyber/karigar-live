@@ -1,6 +1,65 @@
 
 let user=null,products=[],activeProduct=null,categoryFilter='All',authMode='signup',pendingRole=null,photoData='',aiPhotoData='',aiPhotoStats=null,currentLanguage='en',upiCheckout=null;
-const $=id=>document.getElementById(id);
+const $=id=>document.getElementById(id);const productTypesByCategory = {
+  'Pottery': [
+    'Flower pot / planter',
+    'Water pot',
+    'Storage pot',
+    'Cooking pot',
+    'Serving bowl',
+    'Decorative pot'
+  ],
+  'Handloom': [
+    'Saree',
+    'Shawl',
+    'Dupatta',
+    'Bedsheet',
+    'Towel',
+    'Rug'
+  ],
+  'Textiles': [
+    'Saree',
+    'Shawl',
+    'Dupatta',
+    'Scarf',
+    'Fabric',
+    'Cushion cover'
+  ],
+  'Home decor': [
+    'Wall hanging',
+    'Lamp',
+    'Sculpture',
+    'Table decor',
+    'Cushion cover'
+  ],
+  'Basket': [
+    'Shopping basket',
+    'Fruit / vegetable basket',
+    'Storage basket',
+    'Laundry basket',
+    'Gift basket',
+    'Decorative basket'
+  ],
+  'Other handmade': [
+    'Jewelry',
+    'Toys',
+    'Accessories',
+    'Other handmade item'
+  ]
+};
+
+function updateProductTypes() {
+  const select = $('product-type');
+  if (!select) return;
+
+  select.replaceChildren(new Option('Choose a product type', ''));
+  const types = productTypesByCategory[$('category').value] || [];
+
+  types.forEach(type => select.add(new Option(type, type)));
+}
+
+$('category').addEventListener('change', updateProductTypes);
+updateProductTypes();
 document.addEventListener('click',function(e){
   const trigger=e.target.closest('[data-auth-mode]');
   if(trigger){e.preventDefault();try{openAuth(trigger.getAttribute('data-auth-mode'),trigger.getAttribute('data-auth-role'))}catch(err){say('Sign-in error: '+err.message)}return}
@@ -116,7 +175,56 @@ function makeSmallPhoto(file,done){let reader=new FileReader();reader.onload=e=>
     });
   });
 });
-async function saveProduct(){if(user?.role!=='artisan'){beginSelling();return}let name=$('pname').value.trim(),price=Number($('price').value),stock=Number($('stock').value);try{let d=await api('/api/products',{method:'POST',body:JSON.stringify({name,category:$('category').value,price,stock,description:$('description').value,image:photoData})});products.unshift(d.product);renderAuth();renderHome();$('pname').value='';$('price').value='';$('stock').value=1;$('description').value='';$('photo').value='';photoData='';$('upload').querySelector('img')?.remove();$('upload-copy').style.display='';say('Your listing is published and visible in the marketplace.');go('market')}catch(e){say(e.message)}}
+async function saveProduct() {
+  if (user?.role !== 'artisan') {
+    beginSelling();
+    return;
+  }
+
+  const name = $('pname').value.trim();
+  const category = $('category').value;
+  const productType = $('product-type').value;
+  const price = Number($('price').value);
+  const stock = Number($('stock').value);
+
+  if (!productType) {
+    say('Choose a product type before publishing.');
+    $('product-type').focus();
+    return;
+  }
+
+  try {
+    const d = await api('/api/products', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        category,
+        product_type: productType,
+        price,
+        stock,
+        description: $('description').value,
+        image: photoData
+      })
+    });
+
+    products.unshift(d.product);
+    renderAuth();
+    renderHome();
+    $('pname').value = '';
+    $('price').value = '';
+    $('stock').value = 1;
+    $('description').value = '';
+    $('product-type').value = '';
+    $('photo').value = '';
+    photoData = '';
+    $('upload').querySelector('img')?.remove();
+    $('upload-copy').style.display = '';
+    say('Your listing is published and visible in the marketplace.');
+    go('market');
+  } catch (e) {
+    say(e.message);
+  }
+}
 async function buyProduct() {
   if (!activeProduct) return;
   if (user?.role === 'artisan') {
