@@ -60,6 +60,11 @@ function updateProductTypes() {
 
 $('category').addEventListener('change', updateProductTypes);
 updateProductTypes();
+const marketTypeFilter = $('market-product-type');
+if (marketTypeFilter) {
+  const allTypes = [...new Set(Object.values(productTypesByCategory).flat())].sort();
+  allTypes.forEach(type => marketTypeFilter.add(new Option(type, type)));
+}
 document.addEventListener('click',function(e){
   const trigger=e.target.closest('[data-auth-mode]');
   if(trigger){e.preventDefault();try{openAuth(trigger.getAttribute('data-auth-mode'),trigger.getAttribute('data-auth-role'))}catch(err){say('Sign-in error: '+err.message)}return}
@@ -104,10 +109,60 @@ window.addEventListener('popstate',e=>{const target=e.state?.view;if(target&&$('
 async function refresh(){try{let [me,list]=await Promise.all([api('/api/me'),api('/api/products')]);user=me.user;products=list.products;renderAuth();renderHome();if($('view-market').classList.contains('on'))renderMarket();}catch(e){say(e.message)}}
 function renderAuth(){ $('side-name').textContent=user?user.name:'Guest visitor';$('side-role').textContent=user?(user.role==='artisan'?'Artisan account':'Buyer account'):'Browse handmade crafts';$('auth-actions').innerHTML=user?`<span class="tiny" style="align-self:center">${esc(user.name)}</span><button class="btn light small" onclick="logout()">Sign out</button>`:`<a class="btn light small" href="/auth.html?mode=login">Sign in</a><a class="btn" href="/auth.html?mode=signup">Join Karigar</a>`;$('stat-products').textContent=products.length;syncFormAuth()}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function productCard(p,owner=false){const active=p.is_active!==false&&Number(p.is_active)!==0;return `<article class="card" ${active?'onclick="openProduct('+p.id+')"':''}><div class="photo">${p.image_path?`<img src="${esc(p.image_path)}" alt="${esc(p.name)}">`:`<div class="craft-placeholder ${p.category==='Pottery'?'pottery-art':'woven-art'}"><span>Handmade ${esc(p.category||'craft')}</span></div>`}<span class="chip">${esc(p.category)}</span></div><div class="cardbody"><h3>${esc(p.name)}</h3><div class="byline">Made with care by ${esc(p.seller_name||'Artisan')}</div><div class="row"><span class="price">₹${Number(p.price).toLocaleString('en-IN')}</span><span class="tiny">${active?p.stock+' available':'Hidden from buyers'}</span></div>${owner?`<button class="pill listing-toggle" onclick="event.stopPropagation();setProductVisibility(${p.id},${active?'false':'true'})">${active?'Remove from marketplace':'Show in marketplace'}</button>`:''}</div></article>`}
+function productCard(p, owner = false) {
+  const active = p.is_active !== false && Number(p.is_active) !== 0;
+
+  return `<article class="card" ${active ? 'onclick="openProduct(' + p.id + ')"' : ''}>
+    <div class="photo">
+      ${p.image_path
+        ? `<img src="${esc(p.image_path)}" alt="${esc(p.name)}">`
+        : `<div class="craft-placeholder ${p.category === 'Pottery' ? 'pottery-art' : 'woven-art'}"><span>Handmade ${esc(p.category || 'craft')}</span></div>`}
+      <span class="chip">${esc(p.category)}</span>
+    </div>
+    <div class="cardbody">
+      <h3>${esc(p.name)}</h3>
+      ${p.product_type ? `<div class="tiny">${esc(p.product_type)}</div>` : ''}
+      <div class="byline">Made with care by ${esc(p.seller_name || 'Artisan')}</div>
+      <div class="row">
+        <span class="price">₹${Number(p.price).toLocaleString('en-IN')}</span>
+        <span class="tiny">${active ? p.stock + ' available' : 'Hidden from buyers'}</span>
+      </div>
+      ${owner ? `<button class="pill listing-toggle" onclick="event.stopPropagation();setProductVisibility(${p.id},${active ? 'false' : 'true'})">${active ? 'Remove from marketplace' : 'Show in marketplace'}</button>` : ''}
+    </div>
+  </article>`;
+}
 function renderHome(){ $('stat-products').textContent=products.length;$('home-products').innerHTML=products.slice(0,4).map(productCard).join('');$('home-empty').style.display=products.length?'none':'block'}
-function renderMarket(){let term=$('market-search').value.toLowerCase();let list=products.filter(p=>(categoryFilter==='All'||p.category===categoryFilter)&&(!term||(p.name+' '+p.category+' '+p.seller_name+' '+p.seller_location).toLowerCase().includes(term)));$('market-products').innerHTML=list.map(productCard).join('');$('market-empty').style.display=list.length?'none':'block'}
-async function openProduct(id){try{let d=await api('/api/products/'+id);activeProduct=d.product;const photo=$('detail-photo');photo.className='detail-photo'+(activeProduct.image_path?' with-photo':'');photo.innerHTML=activeProduct.image_path?`<img src="${esc(activeProduct.image_path)}" alt="${esc(activeProduct.name)}">`:`<div class="craft-placeholder ${activeProduct.category==='Pottery'?'pottery-art':'woven-art'}"><span>Handmade ${esc(activeProduct.category)}</span></div>`;$('detail-category').textContent=activeProduct.category+' · '+(activeProduct.seller_location||'Handmade');$('detail-name').textContent=activeProduct.name;$('detail-price').textContent='₹'+Number(activeProduct.price).toLocaleString('en-IN');$('detail-stock').textContent=activeProduct.stock+' available';$('detail-description').textContent=activeProduct.description||'Made with care by its artisan. Each handmade piece has its own character.';$('detail-maker').textContent='Made by '+activeProduct.seller_name+(activeProduct.seller_location?' · '+activeProduct.seller_location:'');const phone=activeProduct.seller_phone||'',address=activeProduct.seller_public_address||'';$('maker-contact').hidden=!(phone||address);$('contact-phone-row').hidden=!phone;$('contact-address-row').hidden=!address;$('contact-phone').textContent=phone;$('contact-phone-link').href='tel:'+phone.replace(/[^+0-9]/g,'');$('contact-address').textContent=address;$('buy-qty').max=activeProduct.stock;$('buy-qty').value=1;const hasPayee=Boolean(activeProduct.seller_upi_id);$('buy-button').disabled=!hasPayee;$('buy-button').textContent=hasPayee?'Pay with UPI':'UPI ID unavailable';$('cod-button').disabled=Number(activeProduct.stock)<1;$('payment-note').textContent=hasPayee?'Choose UPI for payment now, or pay cash when the order is delivered.':'UPI is unavailable for this listing; you can still pay cash on delivery.';go('detail')}catch(e){say(e.message)}}
+function renderMarket() {
+  const term = $('market-search').value.toLowerCase();
+  const selectedType = $('market-product-type')?.value || '';
+
+  const list = products.filter(p =>
+    (categoryFilter === 'All' || p.category === categoryFilter) &&
+    (!selectedType || p.product_type === selectedType) &&
+    (!term || (
+      p.name + ' ' + p.category + ' ' + (p.product_type || '') + ' ' +
+      p.seller_name + ' ' + p.seller_location
+    ).toLowerCase().includes(term))
+  );
+
+  $('market-products').innerHTML = list.map(productCard).join('');
+  $('market-empty').style.display = list.length ? 'none' : 'block';
+}
+document.querySelectorAll('[data-cat]').forEach(button => {
+  button.addEventListener('click', () => {
+    categoryFilter = button.dataset.cat;
+
+    document.querySelectorAll('[data-cat]').forEach(item => {
+      item.classList.toggle('active', item === button);
+    });
+
+    const typeFilter = $('market-product-type');
+    if (typeFilter) typeFilter.value = '';
+
+    renderMarket();
+  });
+});
+async function openProduct(id){try{let d=await api('/api/products/'+id);activeProduct=d.product;const photo=$('detail-photo');photo.className='detail-photo'+(activeProduct.image_path?' with-photo':'');photo.innerHTML=activeProduct.image_path?`<img src="${esc(activeProduct.image_path)}" alt="${esc(activeProduct.name)}">`:`<div class="craft-placeholder ${activeProduct.category==='Pottery'?'pottery-art':'woven-art'}"><span>Handmade ${esc(activeProduct.category)}</span></div>`;$('detail-category').textContent=activeProduct.category+(activeProduct.product_type?' · '+activeProduct.product_type:'')+' · '+(activeProduct.seller_location||'Handmade');$('detail-name').textContent=activeProduct.name;$('detail-price').textContent='₹'+Number(activeProduct.price).toLocaleString('en-IN');$('detail-stock').textContent=activeProduct.stock+' available';$('detail-description').textContent=activeProduct.description||'Made with care by its artisan. Each handmade piece has its own character.';$('detail-maker').textContent='Made by '+activeProduct.seller_name+(activeProduct.seller_location?' · '+activeProduct.seller_location:'');const phone=activeProduct.seller_phone||'',address=activeProduct.seller_public_address||'';$('maker-contact').hidden=!(phone||address);$('contact-phone-row').hidden=!phone;$('contact-address-row').hidden=!address;$('contact-phone').textContent=phone;$('contact-phone-link').href='tel:'+phone.replace(/[^+0-9]/g,'');$('contact-address').textContent=address;$('buy-qty').max=activeProduct.stock;$('buy-qty').value=1;const hasPayee=Boolean(activeProduct.seller_upi_id);$('buy-button').disabled=!hasPayee;$('buy-button').textContent=hasPayee?'Pay with UPI':'UPI ID unavailable';$('cod-button').disabled=Number(activeProduct.stock)<1;$('payment-note').textContent=hasPayee?'Choose UPI for payment now, or pay cash when the order is delivered.':'UPI is unavailable for this listing; you can still pay cash on delivery.';go('detail')}catch(e){say(e.message)}}
 function openAuth(mode='signup',role=null){authMode=mode;pendingRole=role;const modal=$('auth-modal');if(!modal){say('Sign-in form is missing from this page.');return}modal.classList.add('open');const setText=(id,value)=>{const el=$(id);if(el)el.textContent=value};const setDisplay=(id,value)=>{const el=$(id);if(el)el.style.display=value};setText('auth-error','');setText('auth-title',mode==='signup'?'Join the marketplace':'Welcome back');setText('auth-sub',mode==='signup'?'Create an account to sell or shop handmade.':'Sign in to your Karigar account.');setText('auth-submit',mode==='signup'?'Create account':'Sign in');setText('auth-switch',mode==='signup'?'Already have an account? Sign in':'New to Karigar? Create an account');setDisplay('name-wrap',mode==='signup'?'grid':'none');setDisplay('role-wrap',mode==='signup'?'grid':'none');setDisplay('location-wrap',mode==='signup'?'grid':'none');const name=$('auth-name');if(name)name.required=mode==='signup';if(role&&$('auth-role'))$('auth-role').value=role;const password=$('auth-password');if(password)password.autocomplete=mode==='signup'?'new-password':'current-password'}
 window.openAuth=openAuth;
 function closeAuth(){$('auth-modal').classList.remove('open');if(location.hash==='#auth-modal')history.replaceState(history.state,'',location.pathname+location.search+'#'+(history.state?.view||'home'))};function toggleAuthMode(){openAuth(authMode==='signup'?'login':'signup')}
