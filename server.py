@@ -603,7 +603,6 @@ class Handler(BaseHTTPRequestHandler):
         UPLOADS.mkdir(exist_ok=True)
         (UPLOADS / filename).write_bytes(raw)
         return "/uploads/" + filename
-
     def create_upi_order(self, db, data):
         user = self.require_user(db, "buyer")
         if not user:
@@ -613,20 +612,30 @@ class Handler(BaseHTTPRequestHandler):
             quantity = int(data.get("quantity", 1))
         except (ValueError, TypeError):
             raise ValueError("Choose a valid product and quantity.")
+
+        delivery_address = str(data.get("delivery_address", "")).strip()
+        if not delivery_address:
+            raise ValueError("Enter a delivery address.")
+        if len(delivery_address) > 500:
+            raise ValueError("Delivery address must be 500 characters or less.")
         if quantity < 1 or quantity > 50:
             raise ValueError("Choose a quantity between 1 and 50.")
+
         product = db.execute("""SELECT p.*,u.name AS seller_name,u.upi_id AS seller_upi_id
-            FROM products p JOIN users u ON u.id=p.seller_id WHERE p.id=?""", (product_id,)).fetchone()
+            FROM products p JOIN users u ON u.id=p.seller_id WHERE p.id=?""",
+            (product_id,)).fetchone()
         if not product or product["stock"] < quantity:
             raise ValueError("That quantity is no longer available.")
         if product["seller_id"] == user["id"]:
             raise ValueError("Use a separate buyer account to order your own listing.")
         if not product["seller_upi_id"]:
             raise ValueError("This artisan has not added a UPI ID yet. Please contact the artisan or try another product.")
+
         total = int(product["price"]) * quantity
-        cur = db.execute("""INSERT INTO orders(product_id,buyer_id,seller_id,quantity,total,status,payment_status)
-            VALUES(?,?,?,?,?,'Awaiting UPI payment','Pending UPI') RETURNING id""",
-            (product_id,user["id"],product["seller_id"],quantity,total))
+        cur = db.execute("""INSERT INTO orders
+            (product_id,buyer_id,seller_id,quantity,total,status,payment_status,delivery_address)
+            VALUES(?,?,?,?,?,'Awaiting UPI payment','Pending UPI',?) RETURNING id""",
+            (product_id, user["id"], product["seller_id"], quantity, total, delivery_address))
         order_id = cur.fetchone()["id"]
         self.send_json(201, {"order_id": order_id, "amount": total, "currency": "INR",
             "payee_vpa": product["seller_upi_id"], "payee_name": product["seller_name"],
@@ -641,25 +650,36 @@ class Handler(BaseHTTPRequestHandler):
             quantity = int(data.get("quantity", 1))
         except (ValueError, TypeError):
             raise ValueError("Choose a valid product and quantity.")
+
+        delivery_address = str(data.get("delivery_address", "")).strip()
+        if not delivery_address:
+            raise ValueError("Enter a delivery address.")
+        if len(delivery_address) > 500:
+            raise ValueError("Delivery address must be 500 characters or less.")
         if quantity < 1 or quantity > 50:
             raise ValueError("Choose a quantity between 1 and 50.")
+
         db.execute("BEGIN IMMEDIATE")
         product = db.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
         if not product or product["stock"] < quantity:
             raise ValueError("That quantity is no longer available.")
         if product["seller_id"] == user["id"]:
             raise ValueError("Use a separate buyer account to order your own listing.")
-        changed = db.execute("UPDATE products SET stock=stock-? WHERE id=? AND stock>=?", (quantity, product_id, quantity))
+
+        changed = db.execute("UPDATE products SET stock=stock-? WHERE id=? AND stock>=?",
+            (quantity, product_id, quantity))
         if changed.rowcount != 1:
             raise ValueError("That quantity is no longer available.")
+
         total = int(product["price"]) * quantity
-        cur = db.execute("""INSERT INTO orders(product_id,buyer_id,seller_id,quantity,total,status,payment_status)
-            VALUES(?,?,?,?,?,'Confirmed','Cash on delivery') RETURNING id""",
-            (product_id, user["id"], product["seller_id"], quantity, total))
+        cur = db.execute("""INSERT INTO orders
+            (product_id,buyer_id,seller_id,quantity,total,status,payment_status,delivery_address)
+            VALUES(?,?,?,?,?,'Confirmed','Cash on delivery',?) RETURNING id""",
+            (product_id, user["id"], product["seller_id"], quantity, total, delivery_address))
         order_id = cur.fetchone()["id"]
         self.send_json(201, {"order_id": order_id, "amount": total, "currency": "INR",
             "product_name": product["name"], "quantity": quantity, "payment_status": "Cash on delivery"})
-
+    
     def cancel_upi_order(self, db, data):
         user = self.require_user(db, "buyer")
         if not user:
