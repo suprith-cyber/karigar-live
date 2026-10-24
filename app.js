@@ -138,7 +138,12 @@ async function buyProduct() {
     $('delivery-address').focus();
     return;
   }
-
+const deliveryAddress = $('delivery-address').value.trim();
+if (!deliveryAddress) {
+  say('Please enter a delivery address.');
+  $('delivery-address').focus();
+  return;
+}
   const quantity = Number($('buy-qty').value) || 1;
   try {
     upiCheckout = await api('/api/upi-orders', {
