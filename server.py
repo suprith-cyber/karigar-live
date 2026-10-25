@@ -221,8 +221,8 @@ def initialize():
         existing_products = {row[1] for row in db.execute("PRAGMA table_info(products)").fetchall()}
         if "is_active" not in existing_products:
             db.execute("ALTER TABLE products ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
-            if "product_type" not in existing_products:
-    db.execute("ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT ''")
+        if "product_type" not in existing_products:
+            db.execute("ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT ''")
         existing = {row[1] for row in db.execute("PRAGMA table_info(orders)").fetchall()}
         for column, definition in {
             "delivery_phone": "TEXT NOT NULL DEFAULT ''", "delivery_address": "TEXT NOT NULL DEFAULT ''",
