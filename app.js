@@ -294,13 +294,6 @@ async function buyProduct() {
     say('This artisan has not added a UPI ID yet. Choose cash on delivery instead.');
     return;
   }
-
-  const deliveryAddress = $('delivery-address').value.trim();
-  if (!deliveryAddress) {
-    say('Please enter your delivery address.');
-    $('delivery-address').focus();
-    return;
-  }
 const deliveryAddress = $('delivery-address').value.trim();
 if (!deliveryAddress) {
   say('Please enter a delivery address.');
