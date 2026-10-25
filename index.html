@@ -51,7 +51,22 @@
 <button type="button" class="btn" onclick="document.getElementById('ai-gallery').click()">🖼️ Gallery</button>
 
 <input id="ai-camera" type="file" accept="image/png,image/jpeg,image/webp" capture="environment" style="display:none">
-<input id="ai-gallery" type="file" accept="image/png,image/jpeg,image/webp" style="display:none"><div id="ai-upload-copy"><div class="photo-glyph">PHOTO</div><b>Take a photo or choose one</b><p class="sub" style="margin-top:5px">JPG, PNG or WebP · up to 5 MB</p></div></div><div class="tiny" id="ai-photo-state" style="margin-top:10px">Choose a photo to begin the visual scan.</div></div><div class="field full"><label><div class="field full"><button class="btn" id="ai-generate-button" onclick="generateCatalog()" disabled>Create sample listing draft</button></div></div><div id="ai-output" class="result"></div></div></section>
+<input id="ai-gallery" type="file" accept="image/png,image/jpeg,image/webp" style="display:none"><div id="ai-upload-copy"><div class="photo-glyph">PHOTO</div><b>Take a photo or choose one</b><p class="sub" style="margin-top:5px">JPG, PNG or WebP · up to 5 MB</p></div></div><div class="tiny" id="ai-photo-state" style="margin-top:10px"<div class="field full">
+  <label for="ai-kind">Describe your craft or product</label>
+  <input id="ai-kind" list="ai-kind-options" maxlength="120"
+         placeholder="Type your own, e.g. palm-leaf basket">
+  <datalist id="ai-kind-options">
+    <option value="Hand-painted terracotta vase">
+    <option value="Ajrakh block-print stole">
+    <option value="Blue pottery serving bowl">
+    <option value="Handwoven cotton table runner">
+  </datalist>
+</div>
+<div class="field full">
+  <button class="btn" id="ai-generate-button" onclick="generateCatalog()" disabled>
+    Create sample listing draft
+  </button>
+</div><div id="ai-output" class="result"></div></div></section>
 <section class="view" id="view-detail"><button class="link" style="padding:0;margin-bottom:17px" onclick="backToMarketplace()">Back to marketplace</button><div class="detail"><div class="detail-photo" id="detail-photo" aria-label="Handmade product preview"><div class="craft-placeholder pottery-art"><span>Handmade pottery</span></div></div><div class="detail-info"><div class="kicker" id="detail-category"></div><h1 id="detail-name"></h1><div class="detail-price" id="detail-price"></div><div class="tiny" id="detail-stock"></div><p class="detail-desc" id="detail-description"></p><div class="maker" id="detail-maker"></div><div class="maker-contact" id="maker-contact" hidden><b>Contact the artisan</b><div id="contact-phone-row" class="contact-line" hidden><a id="contact-phone-link"><span id="contact-phone"></span></a></div><div id="contact-address-row" class="contact-line" hidden><span id="contact-address"></span></div></div><div class="field">
   <label for="delivery-address">Delivery address</label>
   <textarea id="delivery-address" placeholder="House number, street, town, district, PIN code" required></textarea>
