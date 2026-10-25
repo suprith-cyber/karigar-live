@@ -535,7 +535,7 @@ class Handler(BaseHTTPRequestHandler):
         secure = "; Secure" if COOKIE_SECURE else ""
         self.send_json(200, {"ok": True}, {"Set-Cookie": f"{COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0{secure}"})
 
-        def create_product(self, db, data):
+    def create_product(self, db, data):
         user = self.require_user(db, "artisan")
         if not user:
             return
